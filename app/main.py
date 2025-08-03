@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import summarize, explain
+from app.routes import summarize, explain, admin_import
 
 app = FastAPI()
 
@@ -20,3 +20,4 @@ app.add_middleware(
 
 app.include_router(summarize.router)
 app.include_router(explain.router)
+app.include_router(admin_import.router)
