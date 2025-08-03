@@ -4,10 +4,15 @@ from app.routes import summarize, explain
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:3000",  # For local dev
+    "https://royaltiq-web.vercel.app",  # Your deployed frontend
+]
+
 # Allow requests from frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend origin
+    allow_origins=origins,  # Frontend origin
     allow_credentials=True,
     allow_methods=["*"],  # Or restrict to ["POST"]
     allow_headers=["*"],  # Or restrict to ["Content-Type"]
