@@ -4,6 +4,7 @@ import openai
 import os
 import requests
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()
 
@@ -14,11 +15,11 @@ class CatalogMetadata(BaseModel):
     id: str
     title: str
     artist: str
-    genre: str
-    spotify_streams: int
-    youtube_views: int
-    earnings_last_12mo: float
-    valuation_score: float
+    genre: Optional[str] = None
+    spotify_streams: Optional[int] = 0
+    youtube_views: Optional[int] = 0
+    earnings_last_12mo: Optional[float] = 0.0
+    valuation_score: Optional[float] = 0.0
 
 @router.post("/explanation")
 async def explain_score(data: CatalogMetadata):
