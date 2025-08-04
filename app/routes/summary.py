@@ -18,12 +18,11 @@ class CatalogMetadata(BaseModel):
     spotify_streams: int
     youtube_views: int
     earnings_last_12mo: float
-    valuation_score: float
 
-@router.post("/explain")
-async def explain_score(data: CatalogMetadata):
+@router.post("/summary")
+async def summarize_catalog(data: CatalogMetadata):
     prompt = f"""
-    Explain why the following music catalog received a valuation score of {data.valuation_score}:
+    Summarize this music catalog clearly for a potential investor:
 
     Title: {data.title}
     Artist: {data.artist}
@@ -32,22 +31,22 @@ async def explain_score(data: CatalogMetadata):
     YouTube Views: {data.youtube_views}
     Earnings Last 12 Months: ${data.earnings_last_12mo}
 
-    Mention performance across platforms, recent earnings, and risks or highlights that justify this valuation.
+    Provide a concise summary of the artist’s style, catalog performance, and investment potential.
     """
 
     try:
         response = client.chat.completions.create(
             model="gpt-4.1",
             messages=[
-                {"role": "system", "content": "You are a music investment analyst."},
+                {"role": "system", "content": "You are an investment analyst for music catalogs."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=150,
             temperature=0.7
         )
-        explanation = response.choices[0].message.content.strip()
+        summary = response.choices[0].message.content.strip()
 
-        # Save generated explanation back to Supabase
+        # Save generated summary back to Supabase
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
@@ -60,11 +59,11 @@ async def explain_score(data: CatalogMetadata):
         requests.patch(
             f"{supabase_url}/rest/v1/catalogs?id=eq.{data.id}",
             headers=headers,
-            json={"explanation": explanation}
+            json={"summary": summary}
         )
 
-        # Return the explanation explicitly
-        return {"explanation": explanation}
+        # Return the summary explicitly
+        return {"summary": summary}
 
     except Exception as e:
         return {"error": str(e)}

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import summarize, explain, admin_import
+from app.routes import summary, explanation, admin_import
 
 app = FastAPI()
 
@@ -18,6 +18,6 @@ app.add_middleware(
     allow_headers=["*"],  # Or restrict to ["Content-Type"]
 )
 
-app.include_router(summarize.router)
-app.include_router(explain.router)
+app.include_router(summary.router)
+app.include_router(explanation.router)
 app.include_router(admin_import.router)
