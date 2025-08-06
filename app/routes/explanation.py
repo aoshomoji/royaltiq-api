@@ -24,16 +24,22 @@ class CatalogMetadata(BaseModel):
 @router.post("/explanation")
 async def explain_score(data: CatalogMetadata):
     prompt = f"""
-    Explain why the following music catalog received a valuation score of {data.valuation_score}:
+    You are RoyaltIQ’s valuation assistant. Return a clear, investor-facing Markdown explanation **without any chit-chat**.
 
-    Title: {data.title}
-    Artist: {data.artist}
-    Genre: {data.genre}
-    Spotify Streams: {data.spotify_streams}
-    YouTube Views: {data.youtube_views}
-    Earnings Last 12 Months: ${data.earnings_last_12mo}
+    Rules:
+    • **Do NOT** start with words like “Certainly”, “Sure”, “Of course”, “Here’s”.
+    • Begin immediately with the heading **Platform Performance** (or another relevant H2).
+    • Use Markdown headings (##), bold for key numbers, and bullet lists.
+    • Keep it under ~200 words unless the user data requires more detail.
 
-    Mention performance across platforms, recent earnings, and risks or highlights that justify this valuation.
+    Data:
+    - Title: {data.title}
+    - Artist: {data.artist}
+    - Valuation score: {data.valuation_score}
+    - Streams (Spotify): {data.spotify_streams}
+    - Views (YouTube): {data.youtube_views}
+    - Earnings last 12 mo (USD): {data.earnings_last_12mo}
+
     """
 
     try:
