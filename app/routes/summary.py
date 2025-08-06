@@ -24,16 +24,22 @@ class CatalogMetadata(BaseModel):
 @router.post("/summary")
 async def summarize_catalog(data: CatalogMetadata):
     prompt = f"""
-    Summarize this music catalog clearly for a potential investor:
+    Write a concise, investor-friendly summary of the catalog **without any pre-amble**.
+    Return Markdown. Sections:
 
-    Title: {data.title}
-    Artist: {data.artist}
-    Genre: {data.genre}
-    Spotify Streams: {data.spotify_streams}
-    YouTube Views: {data.youtube_views}
-    Earnings Last 12 Months: ${data.earnings_last_12mo}
+    1. **Artist & Style** – one sentence.
+    2. **Catalog Performance** – bullet list of key metrics.
+    3. **Investment Potential** – 1-2 sentences.
 
-    Provide a concise summary of the artist’s style, catalog performance, and investment potential.
+    Use the data below. Avoid phrases like “Sure”, “Here is”, etc.
+
+    Data:
+    - Title: {data.title}
+    - Artist: {data.artist}
+    - Genre: {data.genre}
+    - Spotify streams: {data.spotify_streams}
+    - YouTube views: {data.youtube_views}
+    - Earnings last 12 mo (USD): {data.earnings_last_12mo}
     """
 
     try:
