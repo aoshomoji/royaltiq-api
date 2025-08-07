@@ -56,7 +56,7 @@ def import_tracks(req: ImportRequest, user=Depends(get_current_user)):
         earnings   = heuristic_earnings(popularity)
 
         rows.append({
-            "id": t["id"],                      # Spotify track ID (text UUID-like)
+            "track_id": t["id"],                      # Spotify track ID (text UUID-like)
             "title": t["name"],
             "artist": artist_name,
             "genre": primary_genre,
@@ -71,7 +71,7 @@ def import_tracks(req: ImportRequest, user=Depends(get_current_user)):
     # 3) Upsert with conflict target (id, user_id)
     supabase.table("catalogs").upsert(
         rows,
-        on_conflict="id,user_id"                # respects the UNIQUE constraint
+        on_conflict="track_id,user_id"                # respects the UNIQUE constraint
     ).execute()
 
     return {"status": "ok", "inserted": len(rows)}
