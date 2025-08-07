@@ -56,4 +56,4 @@ def import_tracks(payload: ArtistImportRequest, user = Depends(get_current_user)
         if resp.status_code >= 400:
             raise HTTPException(status_code=500, detail=f"Failed to import track {track['title']}")
 
-    return {"status": "ok", "inserted": len(tracks)}
+    return {"status": "ok", "inserted": len(mock_tracks)}
