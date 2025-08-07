@@ -3,7 +3,7 @@ from fastapi import Header, HTTPException
 from supabase import create_client, Client as SupabaseClient
 
 SUPABASE_URL         = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE"]
+SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 
 supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
