@@ -3,4 +3,3 @@ uvicorn
 openai
 python-dotenv
 requests
-PyJWT==2.8.0
