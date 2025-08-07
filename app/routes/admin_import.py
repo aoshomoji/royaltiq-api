@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import requests, os, uuid
 from dotenv import load_dotenv
 from deps.auth import get_current_user
+
 load_dotenv()
 
 router = APIRouter()
