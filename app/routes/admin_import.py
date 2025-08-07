@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import requests, os, uuid
 from dotenv import load_dotenv
-from deps.auth import get_current_user
+from ..deps.auth import get_current_user
 
 load_dotenv()
 
