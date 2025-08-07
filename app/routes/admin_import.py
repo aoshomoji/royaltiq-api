@@ -1,59 +1,77 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-import requests, os, uuid
-from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException
+from supabase import create_client
 from ..deps.auth import get_current_user
-
-load_dotenv()
+from ..schemas import ImportRequest
+from ..services.spotify import (
+    fetch_top_tracks,
+    fetch_artist_meta,
+)
+import os
 
 router = APIRouter()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SERVICE_ROLE = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+# Supabase service-role client (bypasses RLS for write, still adds user_id)
+supabase = create_client(
+    os.environ["SUPABASE_URL"],
+    os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+)
 
-class ArtistImportRequest(BaseModel):
-    artist_id: str
+# ---------- simple heuristics ----------
+def heuristic_earnings(popularity: int) -> int:
+    """
+    Example: popularity 0-100 → $ popularity × 1 000
+    Refine later with real revenue model.
+    """
+    return popularity * 1_000
+
+def heuristic_score(earnings: int) -> float:
+    """
+    Example valuation score 0-100 based on earnings.
+    """
+    return round(earnings / 10_000, 1)
+# ---------------------------------------
 
 @router.post("/admin/import")
-def import_tracks(payload: ArtistImportRequest, user = Depends(get_current_user)):
-    artist_id = payload.artist_id
+def import_tracks(req: ImportRequest, user=Depends(get_current_user)):
+    """
+    Import an artist’s top tracks from Spotify.
+    Adds/updates rows in 'catalogs', one per (track_id, user_id).
+    """
+    # 1) Fetch from Spotify API
+    try:
+        tracks_raw  = fetch_top_tracks(req.artist_id)         # max 10
+        artist_meta = fetch_artist_meta(req.artist_id)        # for genre + name
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Spotify fetch failed")
 
-    mock_tracks = [
-        {
-            "id": str(uuid.uuid4()),
-            "title": f"Track A ({artist_id[:6]})",
-            "artist": "Mock Artist",
-            "genre": "Pop",
-            "popularity": 36,
-            "spotify_streams": 1_500_000,
-            "youtube_views": 400_000,
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "title": f"Track B ({artist_id[:6]})",
-            "artist": "Mock Artist",
-            "genre": "Pop",
-            "popularity": 42,
-            "spotify_streams": 2_100_000,
-            "youtube_views": 600_000,
-        },
-    ]
+    primary_genre = (artist_meta.get("genres") or [None])[0]
+    artist_name   = artist_meta.get("name", "Unknown Artist")
 
-    for track in mock_tracks:
-        track["estimated_earnings"] = round(track["popularity"] * 5_000)
-        track["valuation_score"]   = round((track["estimated_earnings"] / 100_000) * 10, 2)
-        track["user_id"]           = user.id
+    # 2) Transform → Supabase rows
+    rows = []
+    for t in tracks_raw:
+        popularity = t["popularity"]            # 0-100
+        earnings   = heuristic_earnings(popularity)
 
-    headers = {
-        "apikey": SERVICE_ROLE,
-        "Authorization": f"Bearer {SERVICE_ROLE}",
-        "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates",
-    }
+        rows.append({
+            "id": t["id"],                      # Spotify track ID (text UUID-like)
+            "title": t["name"],
+            "artist": artist_name,
+            "genre": primary_genre,
+            "popularity": popularity,
+            "spotify_streams": 0,               # Spotify public API hides counts
+            "youtube_views": 0,
+            "estimated_earnings": earnings,
+            "valuation_score": heuristic_score(earnings),
+            "user_id": user.id,                 # 🔑 tag owner for RLS
+        })
 
-    for track in mock_tracks:
-        resp = requests.post(f"{SUPABASE_URL}/rest/v1/catalogs", headers=headers, json=track)
-        if resp.status_code >= 400:
-            raise HTTPException(status_code=500, detail=f"Failed to import track {track['title']}")
+    # 3) Upsert with conflict target (id, user_id)
+    supabase.table("catalogs").upsert(
+        rows,
+        on_conflict="id,user_id"                # respects the UNIQUE constraint
+    ).execute()
 
-    return {"status": "ok", "inserted": len(mock_tracks)}
+    return {"status": "ok", "inserted": len(rows)}
