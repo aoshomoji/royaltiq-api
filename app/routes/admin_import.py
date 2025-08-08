@@ -1,3 +1,4 @@
+from math import sqrt
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import create_client
 from ..deps.auth import get_current_user
@@ -16,20 +17,15 @@ supabase = create_client(
     os.environ["SUPABASE_SERVICE_ROLE_KEY"],
 )
 
-# ---------- simple heuristics ----------
-def heuristic_earnings(popularity: int) -> int:
-    """
-    Example: popularity 0-100 → $ popularity × 1 000
-    Refine later with real revenue model.
-    """
-    return popularity * 1_000
+def est_streams(popularity: int) -> int:
+    """Cubic mapping 0-100 → ~1M streams."""
+    return int((popularity / 100) ** 3 * 1_000_000)
 
-def heuristic_score(earnings: int) -> float:
-    """
-    Example valuation score 0-100 based on earnings.
-    """
-    return round(earnings / 10_000, 1)
-# ---------------------------------------
+def est_earnings(streams: int) -> float:
+    return round(streams * 0.0038, 2)          # USD
+
+def valuation_score(earnings: float) -> float:
+    return round(min(100, sqrt(earnings / 1_000) * 10), 1)
 
 @router.post("/admin/import")
 def import_tracks(req: ImportRequest, user=Depends(get_current_user)):
@@ -52,22 +48,22 @@ def import_tracks(req: ImportRequest, user=Depends(get_current_user)):
     # 2) Transform → Supabase rows
     rows = []
     for t in tracks_raw:
-        popularity = t["popularity"]            # 0-100
-        earnings   = heuristic_earnings(popularity)
+        popularity = t["popularity"]
+        streams    = est_streams(popularity)
+        earnings   = est_earnings(streams)
 
         rows.append({
-            "track_id": t["id"],                      # Spotify track ID (text UUID-like)
+            "track_id": t["id"],
             "title": t["name"],
             "artist": artist_name,
-            "genre": primary_genre,
+            "genre":  primary_genre,
             "popularity": popularity,
-            "spotify_streams": 0,               # Spotify public API hides counts
+            "spotify_streams": streams,
             "youtube_views": 0,
             "estimated_earnings": earnings,
-            "valuation_score": heuristic_score(earnings),
-            "user_id": user.id,                 # 🔑 tag owner for RLS
+            "valuation_score": valuation_score(earnings),
+            "user_id": user.id,
         })
-
     # 3) Upsert with conflict target (id, user_id)
     supabase.table("catalogs").upsert(
         rows,
