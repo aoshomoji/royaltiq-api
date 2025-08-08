@@ -18,8 +18,11 @@ supabase = create_client(
 )
 
 def est_streams(popularity: int) -> int:
-    """Cubic mapping 0-100 → ~1M streams."""
-    return int((popularity / 100) ** 3 * 1_000_000)
+    """
+    Popularity 80-100 → hundreds of millions / billions.
+    pop 90 ≈ 3.0 B, 80 ≈ 1.0 B, 60 ≈ 64 M.
+    """
+    return int((popularity / 100) ** 5 * 4_000_000_000)
 
 def est_earnings(streams: int) -> float:
     return round(streams * 0.0038, 2)          # USD
